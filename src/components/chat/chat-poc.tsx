@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import type { ChatMessage, ToolProposal } from "@/types/chat";
 import { useDresses } from "@/hooks/use-dresses";
 import { applyMutation } from "@/lib/chat-tools";
+import { persistMutation } from "@/lib/persist-mutation";
 import { uid } from "@/lib/helpers";
 import { GOLD, MUTED } from "@/constants";
 import { CSS } from "@/styles/maison.css";
@@ -111,21 +112,28 @@ export default function ChatPOC() {
     }
   }, [senderRole, messages, dresses]);
 
-  const handleAccept = useCallback((proposalId: string) => {
-    setProposals(prev => prev.map(p => {
-      if (p.id !== proposalId) return p;
+  const handleAccept = useCallback(async (proposalId: string) => {
+    const proposal = proposals.find(p => p.id === proposalId);
+    if (!proposal) return;
 
-      setDresses(prevDresses => {
-        const newDresses = applyMutation(p.toolName, p.toolInput, prevDresses);
-        const po = String(p.toolInput.po_number);
-        setChangedPOs(prev => new Set(prev).add(po));
-        clearHighlight(po);
-        return newDresses;
-      });
+    setProposals(prev => prev.map(p =>
+      p.id === proposalId ? { ...p, status: "accepted" as const } : p,
+    ));
 
-      return { ...p, status: "accepted" as const };
-    }));
-  }, [clearHighlight]);
+    setDresses(prevDresses => {
+      const newDresses = applyMutation(proposal.toolName, proposal.toolInput, prevDresses);
+      const po = String(proposal.toolInput.po_number);
+      setChangedPOs(prev => new Set(prev).add(po));
+      clearHighlight(po);
+      return newDresses;
+    });
+
+    try {
+      await persistMutation(proposal.toolName, proposal.toolInput, dresses);
+    } catch (err) {
+      console.error("Failed to persist mutation:", err);
+    }
+  }, [proposals, clearHighlight, dresses]);
 
   const handleReject = useCallback((proposalId: string) => {
     setProposals(prev => prev.map(p =>
