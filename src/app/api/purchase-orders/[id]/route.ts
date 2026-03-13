@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { purchaseOrders, inventoryItems, manufacturers, collections, collectionCountries, invoiceLineItems, purchaseOrderInvoiceLines, invoices } from "@/lib/schema";
 import { eq } from "drizzle-orm";
+import { getSession } from "@/lib/auth";
+import { logAudit, stringifyValue } from "@/lib/audit";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -81,6 +83,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const { id } = await params;
     const body = await req.json();
+    const source = (body._source as string) || "manual";
+    delete body._source;
 
     const allowedFields = [
       "orderStatus", "shipByDateAgreed", "poNotes", "sendPo",
@@ -90,6 +94,31 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     ] as const;
 
     const timestampFields = new Set(["shipByDateAgreed", "sendShootSamplesAgreed"]);
+
+    // Fetch current values before updating (for audit diff)
+    const [current] = await db
+      .select({
+        id: purchaseOrders.id,
+        orderStatus: purchaseOrders.orderStatus,
+        shipByDateAgreed: purchaseOrders.shipByDateAgreed,
+        poNotes: purchaseOrders.poNotes,
+        sendPo: purchaseOrders.sendPo,
+        lateProduct: purchaseOrders.lateProduct,
+        singleProductCost: purchaseOrders.singleProductCost,
+        straightSizeCost: purchaseOrders.straightSizeCost,
+        plusSizeCost: purchaseOrders.plusSizeCost,
+        salePrice: purchaseOrders.salePrice,
+        womensSizes: purchaseOrders.womensSizes,
+        womensNumericSizes: purchaseOrders.womensNumericSizes,
+        girlsSizes: purchaseOrders.girlsSizes,
+        tags: purchaseOrders.tags,
+      })
+      .from(purchaseOrders)
+      .where(eq(purchaseOrders.id, id));
+
+    if (!current) {
+      return NextResponse.json({ error: "Purchase order not found" }, { status: 404 });
+    }
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     for (const field of allowedFields) {
@@ -106,8 +135,28 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .where(eq(purchaseOrders.id, id))
       .returning({ id: purchaseOrders.id });
 
-    if (!updated) {
-      return NextResponse.json({ error: "Purchase order not found" }, { status: 404 });
+    // Write audit log entries for each changed field
+    const user = await getSession();
+    const userName = user?.name ?? "System";
+    const userId = user?.id ?? null;
+
+    for (const field of allowedFields) {
+      if (field in body) {
+        const oldVal = stringifyValue((current as Record<string, unknown>)[field]);
+        const newVal = stringifyValue(body[field]);
+        if (oldVal !== newVal) {
+          logAudit({
+            purchaseOrderId: id,
+            userId,
+            userName,
+            action: `update_${field}`,
+            field,
+            oldValue: oldVal,
+            newValue: newVal,
+            source: source as "manual" | "chat" | "system",
+          }).catch(err => console.error("Audit log failed:", err));
+        }
+      }
     }
 
     return NextResponse.json(updated);
