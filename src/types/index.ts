@@ -153,7 +153,6 @@ export interface Message {
 export interface User {
   id: string;
   email: string;
-  pass: string;
   role: Role;
   name: string;
 }

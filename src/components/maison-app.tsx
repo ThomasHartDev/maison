@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { User, TabId, Message } from "@/types";
 import { CSS } from "@/styles/maison.css";
 import { TABS_BY_ROLE } from "@/constants";
@@ -19,6 +19,7 @@ import { ChatView } from "./chat/chat-view";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [tab, setTab] = useState<TabId>("home");
   const { dresses, setDresses, loading: dressesLoading } = useDresses();
   const { collections, loading: colLoading } = useCollections();
@@ -28,6 +29,30 @@ export default function App() {
   const [colFilter, setColFilter] = useState<string | null>(null);
 
   const loading = dressesLoading || colLoading || mfrLoading || invLoading;
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.user) setUser(data.user); })
+      .catch(() => {})
+      .finally(() => setSessionChecked(true));
+  }, []);
+
+  const handleSignOut = useCallback(async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setUser(null);
+    setTab("home");
+  }, []);
+
+  if (!sessionChecked) {
+    return (
+      <><style>{CSS}</style>
+        <div style={{ minHeight: "100dvh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ color: "var(--text3)", fontSize: 14 }}>Loading...</div>
+        </div>
+      </>
+    );
+  }
 
   if (!user) {
     return (
@@ -41,7 +66,7 @@ export default function App() {
   return (
     <><style>{CSS}</style>
       <div style={{ minHeight: "100dvh", background: "var(--bg)", display: "flex", flexDirection: "column", ...(tab === "chat" && { height: "100dvh", maxHeight: "100dvh" }) }}>
-        <AppHeader user={user} onSignOut={() => setUser(null)} />
+        <AppHeader user={user} onSignOut={handleSignOut} />
         <div style={{
           flex: 1,
           ...(tab === "chat"

@@ -1,5 +1,32 @@
 import { pgTable, text, integer, doublePrecision, timestamp, jsonb, primaryKey } from "drizzle-orm/pg-core";
 
+// ─── Users ──────────────────────────────────────────────────────────────────────
+
+export const users = pgTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("passwordHash").notNull(),
+  name: text("name").notNull(),
+  role: text("role").notNull().default("logistics"),
+  createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { precision: 3 }).notNull().defaultNow(),
+});
+
+// ─── Audit Log ──────────────────────────────────────────────────────────────────
+
+export const auditLog = pgTable("audit_log", {
+  id: text("id").primaryKey(),
+  purchaseOrderId: text("purchaseOrderId").notNull(),
+  userId: text("userId"),
+  userName: text("userName").notNull(),
+  action: text("action").notNull(),
+  field: text("field"),
+  oldValue: text("oldValue"),
+  newValue: text("newValue"),
+  source: text("source").notNull().default("manual"),
+  createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+});
+
 // ─── Collections ────────────────────────────────────────────────────────────────
 
 export const collections = pgTable("collections", {
