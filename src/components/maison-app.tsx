@@ -40,7 +40,7 @@ export default function App() {
 
   return (
     <><style>{CSS}</style>
-      <div style={{ minHeight: "100dvh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100dvh", background: "var(--bg)", display: "flex", flexDirection: "column", ...(tab === "chat" && { height: "100dvh", maxHeight: "100dvh" }) }}>
         <AppHeader user={user} onSignOut={() => setUser(null)} />
         <div style={{
           flex: 1,
