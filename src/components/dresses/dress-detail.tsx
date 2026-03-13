@@ -115,8 +115,8 @@ const FIELD_LABELS: Record<string, string> = {
   straightSizeCost: "Straight Size Cost",
   plusSizeCost: "Plus Size Cost",
   salePrice: "Sale Price",
-  womensSizes: "Women's Sizes",
-  womensNumericSizes: "Women's Numeric Sizes",
+  womensSizes: "Quantities",
+  womensNumericSizes: "Numeric Sizes",
   girlsSizes: "Girls Sizes",
   tags: "Tags",
 };
@@ -126,6 +126,71 @@ const SOURCE_LABELS: Record<string, string> = {
   manual: "Manual",
   system: "System",
 };
+
+/** Format a raw audit value for display — handles JSON size objects, dates, etc. */
+function formatValue(raw: string | null, field: string | null): string {
+  if (!raw) return "(empty)";
+
+  // Size JSON → "XS: 10, S: 20, M: 15"
+  if (field && (field.includes("Sizes") || field.includes("sizes"))) {
+    try {
+      const obj = JSON.parse(raw) as Record<string, number>;
+      const parts = Object.entries(obj)
+        .filter(([, v]) => v > 0)
+        .map(([k, v]) => `${k.toUpperCase()}: ${v}`);
+      if (parts.length > 0) return parts.join(", ");
+    } catch { /* not JSON, fall through */ }
+  }
+
+  // Tags array
+  if (field === "tags") {
+    try {
+      const arr = JSON.parse(raw) as string[];
+      if (Array.isArray(arr)) return arr.join(", ");
+    } catch { /* fall through */ }
+  }
+
+  // ISO date → readable
+  if (field && field.toLowerCase().includes("date") && /^\d{4}-\d{2}/.test(raw)) {
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
+  }
+
+  // Cost → dollar format
+  if (field && (field.includes("Cost") || field.includes("cost") || field.includes("Price") || field.includes("price"))) {
+    const n = parseFloat(raw);
+    if (!isNaN(n)) return `$${n.toFixed(2)}`;
+  }
+
+  return raw;
+}
+
+/** For size changes, show only the sizes that actually changed */
+function formatSizeDiff(oldRaw: string | null, newRaw: string | null, field: string | null): string | null {
+  if (!field || !field.toLowerCase().includes("sizes")) return null;
+  if (!oldRaw || !newRaw) return null;
+
+  try {
+    const oldObj = JSON.parse(oldRaw) as Record<string, number>;
+    const newObj = JSON.parse(newRaw) as Record<string, number>;
+    const changes: string[] = [];
+
+    const allKeys = new Set([...Object.keys(oldObj), ...Object.keys(newObj)]);
+    for (const k of allKeys) {
+      const ov = oldObj[k] ?? 0;
+      const nv = newObj[k] ?? 0;
+      if (ov !== nv) {
+        changes.push(`${k.toUpperCase()}: ${ov} → ${nv}`);
+      }
+    }
+
+    if (changes.length > 0) return changes.join(", ");
+  } catch { /* fall through */ }
+
+  return null;
+}
 
 function TimelineView({ poId }: { poId: string }) {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
@@ -166,13 +231,23 @@ function TimelineView({ poId }: { poId: string }) {
               {fieldLabel ? `Updated ${fieldLabel}` : e.action}
               <span style={{ fontSize: 10, color: MUTED, marginLeft: 6 }}>{SOURCE_LABELS[e.source] || e.source}</span>
             </div>
-            {e.oldValue !== null && e.newValue !== null && (
-              <div style={{ fontSize: 11, color: "var(--text3)", background: "var(--surface2)", borderRadius: 6, padding: "4px 8px", marginTop: 4 }}>
-                <span style={{ textDecoration: "line-through", opacity: 0.6 }}>{e.oldValue || "(empty)"}</span>
-                {" → "}
-                <span style={{ fontWeight: 600, color: "var(--text)" }}>{e.newValue || "(empty)"}</span>
-              </div>
-            )}
+            {e.oldValue !== null && e.newValue !== null && (() => {
+              const sizeDiff = formatSizeDiff(e.oldValue, e.newValue, e.field);
+              if (sizeDiff) {
+                return (
+                  <div style={{ fontSize: 11, color: "var(--text3)", background: "var(--surface2)", borderRadius: 6, padding: "4px 8px", marginTop: 4 }}>
+                    {sizeDiff}
+                  </div>
+                );
+              }
+              return (
+                <div style={{ fontSize: 11, color: "var(--text3)", background: "var(--surface2)", borderRadius: 6, padding: "4px 8px", marginTop: 4 }}>
+                  <span style={{ textDecoration: "line-through", opacity: 0.6 }}>{formatValue(e.oldValue, e.field)}</span>
+                  {" → "}
+                  <span style={{ fontWeight: 600, color: "var(--text)" }}>{formatValue(e.newValue, e.field)}</span>
+                </div>
+              );
+            })()}
           </div>
         );
       })}
