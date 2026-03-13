@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { purchaseOrders, inventoryItems, manufacturers, collections } from "@/lib/schema";
+import { purchaseOrders, inventoryItems, manufacturers, collections, collectionCountries } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import type { Dress, DressStatus, Quantities } from "@/types";
 
-// Map real orderStatus values to our DressStatus type
 function mapStatus(orderStatus: string | null): DressStatus {
   if (!orderStatus) return "draft";
   const s = orderStatus.toLowerCase();
@@ -17,10 +16,8 @@ function mapStatus(orderStatus: string | null): DressStatus {
   return "production";
 }
 
-// Extract simplified 6-size quantities from the JSON size breakdowns
 function mapQuantities(womensSizes: Record<string, number> | null): Quantities {
   if (!womensSizes) return { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0 };
-
   return {
     XS: (womensSizes.xxs || 0) + (womensSizes.xs || 0),
     S: womensSizes.s || 0,
@@ -33,10 +30,9 @@ function mapQuantities(womensSizes: Record<string, number> | null): Quantities {
   };
 }
 
-// Build milestones from status
 function buildMilestones(status: DressStatus) {
   const steps = ["Fabric Sourced", "Cutting", "Sewing", "QC Passed", "Dispatched"];
-  const completedSteps = {
+  const completedSteps: Record<DressStatus, number> = {
     draft: 0, submitted: 0, production: 1, ontrack: 2,
     delayed: 1, shipped: 4, received: 5, cancelled: 0,
   };
@@ -44,15 +40,9 @@ function buildMilestones(status: DressStatus) {
   return steps.map((label, i) => ({ label, done: i < done }));
 }
 
-// Format PO number from order date or airtable ID
-function formatPoNumber(orderDate: Date | null, index: number): string {
-  if (orderDate) {
-    const d = new Date(orderDate);
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = String(d.getFullYear()).slice(-2);
-    return `PO-${year}${month}-${String(index + 1).padStart(3, "0")}`;
-  }
-  return `PO-${String(index + 1).padStart(3, "0")}`;
+function fmtDate(d: Date | null): string | null {
+  if (!d) return null;
+  return new Date(d).toISOString().split("T")[0];
 }
 
 export async function GET() {
@@ -60,51 +50,82 @@ export async function GET() {
     const rows = await db
       .select({
         id: purchaseOrders.id,
+        airtableId: purchaseOrders.airtableId,
         orderStatus: purchaseOrders.orderStatus,
         orderDate: purchaseOrders.orderDate,
         shipByDateAgreed: purchaseOrders.shipByDateAgreed,
         poNotes: purchaseOrders.poNotes,
-        womensSizes: purchaseOrders.womensSizes,
+        sendPo: purchaseOrders.sendPo,
+        lateProduct: purchaseOrders.lateProduct,
+        separatePricing: purchaseOrders.separatePricing,
+        singleProductCost: purchaseOrders.singleProductCost,
+        straightSizeCost: purchaseOrders.straightSizeCost,
+        plusSizeCost: purchaseOrders.plusSizeCost,
+        salePrice: purchaseOrders.salePrice,
+        shootSampleStatus: purchaseOrders.shootSampleStatus,
+        sendShootSamplesAgreed: purchaseOrders.sendShootSamplesAgreed,
         tags: purchaseOrders.tags,
+        womensSizes: purchaseOrders.womensSizes,
+        womensNumericSizes: purchaseOrders.womensNumericSizes,
+        girlsSizes: purchaseOrders.girlsSizes,
         inventoryItemName: inventoryItems.styleProductionName,
         inventoryItemFinalName: inventoryItems.finalName,
+        inventoryItemSku: inventoryItems.fullJessaKaeSku,
         inventoryItemImage: inventoryItems.productImageUrl,
+        productNotes: inventoryItems.productNotes,
         manufacturerId: purchaseOrders.manufacturerId,
         manufacturerName: manufacturers.name,
+        manufacturerCountry: manufacturers.country,
         collectionId: purchaseOrders.collectionId,
         collectionName: collections.name,
+        collectionCountryId: purchaseOrders.collectionCountryId,
+        shipMethod: collectionCountries.shipMethod,
       })
       .from(purchaseOrders)
       .leftJoin(inventoryItems, eq(purchaseOrders.inventoryItemId, inventoryItems.id))
       .leftJoin(manufacturers, eq(purchaseOrders.manufacturerId, manufacturers.id))
-      .leftJoin(collections, eq(purchaseOrders.collectionId, collections.id));
+      .leftJoin(collections, eq(purchaseOrders.collectionId, collections.id))
+      .leftJoin(collectionCountries, eq(purchaseOrders.collectionCountryId, collectionCountries.id));
 
     const dresses: Dress[] = rows.map((row, i) => {
       const status = mapStatus(row.orderStatus);
-      const quantities = mapQuantities(row.womensSizes as Record<string, number> | null);
+      const ws = row.womensSizes as Record<string, number> | null;
+      const quantities = mapQuantities(ws);
 
       return {
         id: row.id,
-        poNumber: formatPoNumber(row.orderDate, i),
+        airtableId: row.airtableId,
+        poNumber: row.airtableId || `PO-${String(i + 1).padStart(3, "0")}`,
         name: row.inventoryItemFinalName || row.inventoryItemName || "Untitled Style",
-        collectionId: row.collectionId || "unknown",
-        manufacturerId: row.manufacturerId || "unknown",
         status,
-        dueDate: row.shipByDateAgreed ? new Date(row.shipByDateAgreed).toISOString().split("T")[0] : "",
-        orderDate: row.orderDate ? new Date(row.orderDate).toISOString().split("T")[0] : "",
+        orderStatus: row.orderStatus,
+        orderDate: fmtDate(row.orderDate),
+        dueDate: fmtDate(row.shipByDateAgreed),
+        sendPo: row.sendPo,
+        lateProduct: row.lateProduct,
+        poNotes: row.poNotes,
+        separatePricing: row.separatePricing,
+        shootSampleStatus: row.shootSampleStatus,
+        sendShootSamplesAgreed: fmtDate(row.sendShootSamplesAgreed),
+        tags: row.tags,
+        singleProductCost: row.singleProductCost,
+        straightSizeCost: row.straightSizeCost,
+        plusSizeCost: row.plusSizeCost,
+        salePrice: row.salePrice,
+        womensSizes: ws,
+        womensNumericSizes: row.womensNumericSizes as Record<string, number> | null,
+        girlsSizes: row.girlsSizes as Record<string, number> | null,
         quantities,
-        imageUrl: row.inventoryItemImage || "https://images.unsplash.com/photo-1558618047-f4042eb19143?w=400&q=75",
+        inventoryItemSku: row.inventoryItemSku,
+        imageUrl: row.inventoryItemImage || null,
+        productNotes: row.productNotes,
+        collectionId: row.collectionId,
+        collectionName: row.collectionName,
+        manufacturerId: row.manufacturerId,
+        manufacturerName: row.manufacturerName,
+        manufacturerCountry: row.manufacturerCountry,
+        shipMethod: row.shipMethod,
         milestones: buildMilestones(status),
-        timeline: [{
-          id: `tl-${row.id}`,
-          date: row.orderDate ? new Date(row.orderDate).toISOString().split("T")[0] : "",
-          time: "9:00 AM",
-          type: "system" as const,
-          source: "PO Created",
-          content: `PO created for ${row.inventoryItemFinalName || row.inventoryItemName || "style"}`,
-          user: "System",
-          category: "design" as const,
-        }],
         alerts: row.poNotes ? [row.poNotes] : [],
       };
     });

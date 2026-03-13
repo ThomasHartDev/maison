@@ -40,13 +40,7 @@ export const InboxView = ({ messages, setMessages, dresses, setDresses, user }: 
     newMsg.linkedDressIds.forEach(dId => {
       setDresses(prev => prev.map(d => {
         if (d.id !== dId) return d;
-        return {
-          ...d, timeline: [...d.timeline, {
-            id: uid(), date: nowISO(), time: nowTime(), type: newMsg.channel,
-            source: `Outgoing ${newMsg.channel}`, content: newMsg.body.slice(0, 200),
-            user: user.name, category: "design",
-          }],
-        };
+        return d;
       }));
     });
     setMessages(p => [msg, ...p]);
@@ -55,18 +49,6 @@ export const InboxView = ({ messages, setMessages, dresses, setDresses, user }: 
   };
 
   const linkAndApprove = (msg: Message, dressId: string) => {
-    setDresses(prev => prev.map(d => {
-      if (d.id !== dressId) return d;
-      const exists = d.timeline.some(t => t.content && t.content.includes(msg.content.slice(0, 30)));
-      if (exists) return d;
-      return {
-        ...d, timeline: [...d.timeline, {
-          id: uid(), date: msg.date, time: msg.time, type: msg.channel,
-          source: `${msg.channel === "whatsapp" ? "WhatsApp" : "Email"} from ${msg.from}`,
-          content: msg.content, user: msg.from, category: msg.category || "design",
-        }],
-      };
-    }));
     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, needsReview: false, resolved: true, linkedDressIds: [...(m.linkedDressIds || []), dressId] } : m));
   };
 
@@ -96,7 +78,7 @@ export const InboxView = ({ messages, setMessages, dresses, setDresses, user }: 
             {reviewQueue.map(msg => (
               <Card key={msg.id} alert style={{ padding: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <div><div style={{ fontWeight: 700, fontSize: 13 }}>{msg.from}</div><div style={{ fontSize: 10, color: "var(--text3)" }}>{msg.date} \u00b7 {msg.channel}</div></div>
+                  <div><div style={{ fontWeight: 700, fontSize: 13 }}>{msg.from}</div><div style={{ fontSize: 10, color: "var(--text3)" }}>{msg.date} {"\u00b7"} {msg.channel}</div></div>
                   <span style={{ fontSize: 9, background: "var(--amber-bg)", color: AMBER, borderRadius: 20, padding: "2px 10px", fontWeight: 700 }}>{"\u26a0"} REVIEW</span>
                 </div>
                 <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 10, lineHeight: 1.4 }}>{msg.content}</div>
@@ -105,7 +87,7 @@ export const InboxView = ({ messages, setMessages, dresses, setDresses, user }: 
                   {dresses.slice(0, 12).map(d => (
                     <button key={d.id} onClick={() => linkAndApprove(msg, d.id)} style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: "4px 10px", fontSize: 10, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
                       {d.imageUrl && <img src={d.imageUrl} alt="" style={{ width: 18, height: 22, objectFit: "cover", borderRadius: 3 }} />}
-                      <span>{d.poNumber} {d.name}</span>
+                      <span>{d.inventoryItemSku || d.poNumber} {d.name}</span>
                     </button>
                   ))}
                 </div>
@@ -144,12 +126,13 @@ export const InboxView = ({ messages, setMessages, dresses, setDresses, user }: 
               <span style={{ fontSize: 10, background: (sel.category || "design") === "shipping" ? AMBER + "14" : GOLD + "14", color: (sel.category || "design") === "shipping" ? AMBER : GOLD, borderRadius: 20, padding: "2px 10px" }}>{(sel.category || "design") === "shipping" ? "\ud83d\udce6 Shipping" : "\ud83c\udfa8 Design"}</span>
               {sel.linkedDressIds?.map(id => { const d = dresses.find(x => x.id === id); return d ? <span key={id} style={{ fontSize: 10, background: GOLD + "14", color: GOLD, borderRadius: 20, padding: "2px 10px" }}>{d.poNumber}</span> : null; })}
             </div>
-            <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 12 }}>{sel.date} \u00b7 {sel.time}</div>
+            <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 12 }}>{sel.date} {"\u00b7"} {sel.time}</div>
             <div style={{ background: "var(--surface2)", borderRadius: 10, padding: 14, fontSize: 14, lineHeight: 1.6 }}>{sel.content}</div>
           </Card>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {filteredMsgs.length === 0 && <div style={{ textAlign: "center", color: "var(--text3)", padding: 40, fontSize: 13 }}>No messages yet</div>}
           {filteredMsgs.map(m => (
             <Card key={m.id} onClick={() => { setSel(m); markRead(m.id); }} style={{ padding: "10px 14px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

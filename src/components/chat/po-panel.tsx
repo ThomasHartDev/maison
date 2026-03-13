@@ -54,7 +54,7 @@ export const POPanelWithDetail = ({ dresses, changedPOs, onSelectDress }: POPane
           </div>
           <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 4 }}>{d.name}</div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text3)" }}>
-            <span>Due: {d.dueDate}</span>
+            <span>Due: {d.dueDate || "\u2014"}</span>
             <span>{sum(d.quantities)} units</span>
           </div>
           {d.alerts.length > 0 && (

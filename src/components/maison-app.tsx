@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { User, TabId, Message, Shipment } from "@/types";
+import type { User, TabId, Message } from "@/types";
 import { CSS } from "@/styles/maison.css";
 import { TABS_BY_ROLE } from "@/constants";
-import { SEED_SHIPMENTS, SEED_MSGS } from "@/data/seed";
 import { useDresses } from "@/hooks/use-dresses";
-import { useAutoLink } from "@/hooks/use-auto-link";
-import { useLiveMessages } from "@/hooks/use-live-messages";
+import { useCollections } from "@/hooks/use-collections";
+import { useManufacturers } from "@/hooks/use-manufacturers";
+import { useInvoices } from "@/hooks/use-invoices";
 import { LoginScreen } from "./login-screen";
 import { AppHeader } from "./app-header";
 import { AppNav } from "./app-nav";
@@ -20,13 +20,14 @@ import { ChatView } from "./chat/chat-view";
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [tab, setTab] = useState<TabId>("home");
-  const { dresses, setDresses, loading } = useDresses();
-  const [messages, setMessages] = useState<Message[]>(SEED_MSGS);
-  const [shipments, setShipments] = useState<Shipment[]>(SEED_SHIPMENTS);
+  const { dresses, setDresses, loading: dressesLoading } = useDresses();
+  const { collections, loading: colLoading } = useCollections();
+  const { manufacturers, loading: mfrLoading } = useManufacturers();
+  const { invoices, loading: invLoading } = useInvoices();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [colFilter, setColFilter] = useState<string | null>(null);
 
-  useAutoLink(dresses, setDresses, setMessages, setShipments);
-  useLiveMessages(user, dresses, setDresses, setMessages);
+  const loading = dressesLoading || colLoading || mfrLoading || invLoading;
 
   if (!user) {
     return (
@@ -42,11 +43,17 @@ export default function App() {
       <div style={{ minHeight: "100dvh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
         <AppHeader user={user} onSignOut={() => setUser(null)} />
         <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 100px", WebkitOverflowScrolling: "touch" }}>
-          {tab === "home" && <HomeView dresses={dresses} messages={messages} shipments={shipments} user={user} setTab={setTab} setColFilter={setColFilter} />}
-          {tab === "dresses" && <DressesView dresses={dresses} setDresses={setDresses} user={user} initCol={colFilter} />}
-          {tab === "inbox" && <InboxView messages={messages} setMessages={setMessages} dresses={dresses} setDresses={setDresses} user={user} />}
-          {tab === "shipments" && <ShipmentsView shipments={shipments} setShipments={setShipments} dresses={dresses} setDresses={setDresses} />}
-          {tab === "chat" && <ChatView dresses={dresses} setDresses={setDresses} user={user} />}
+          {loading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 60, color: "var(--text3)", fontSize: 14 }}>Loading...</div>
+          ) : (
+            <>
+              {tab === "home" && <HomeView dresses={dresses} messages={messages} invoices={invoices} collections={collections} user={user} setTab={setTab} setColFilter={setColFilter} />}
+              {tab === "dresses" && <DressesView dresses={dresses} setDresses={setDresses} collections={collections} manufacturers={manufacturers} user={user} initCol={colFilter} />}
+              {tab === "inbox" && <InboxView messages={messages} setMessages={setMessages} dresses={dresses} setDresses={setDresses} user={user} />}
+              {tab === "shipments" && <ShipmentsView invoices={invoices} manufacturers={manufacturers} dresses={dresses} />}
+              {tab === "chat" && <ChatView dresses={dresses} setDresses={setDresses} user={user} />}
+            </>
+          )}
         </div>
         <AppNav tabs={tabs} activeTab={tab} unread={unread} onTabChange={(t) => { setTab(t); if (t !== "dresses") setColFilter(null); }} />
       </div>
