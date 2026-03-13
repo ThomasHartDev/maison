@@ -8,9 +8,6 @@ export type TimelineCategory = "design" | "shipping";
 
 export type MessageChannel = "whatsapp" | "email";
 
-export type ShipmentMethod = "sea" | "air";
-
-export type ShipmentStatus = "Awaiting Pickup" | "In Transit" | "Customs" | "Delayed" | "Delivered";
 
 export type Role = "admin" | "logistics" | "marketing" | "design" | "warehouse";
 
@@ -19,6 +16,8 @@ export type TabId = "home" | "dresses" | "inbox" | "shipments" | "chat";
 export type Size = "XS" | "S" | "M" | "L" | "XL" | "XXL";
 
 export type Quantities = Record<Size, number>;
+
+export type SizeBreakdown = Record<string, number>;
 
 export interface StatusConfig {
   color: string;
@@ -45,56 +44,95 @@ export interface Milestone {
 
 export interface Dress {
   id: string;
+  airtableId: string | null;
   poNumber: string;
   name: string;
-  collectionId: string;
-  manufacturerId: string;
   status: DressStatus;
-  dueDate: string;
-  orderDate: string;
+
+  // Real PO fields
+  orderStatus: string | null;
+  orderDate: string | null;
+  dueDate: string | null;
+  sendPo: string | null;
+  lateProduct: string | null;
+  poNotes: string | null;
+  separatePricing: string | null;
+  shootSampleStatus: string | null;
+  sendShootSamplesAgreed: string | null;
+  tags: string[] | null;
+
+  // Pricing
+  singleProductCost: number | null;
+  straightSizeCost: number | null;
+  plusSizeCost: number | null;
+  salePrice: number | null;
+
+  // Full size breakdowns from database (JSONB)
+  womensSizes: SizeBreakdown | null;
+  womensNumericSizes: SizeBreakdown | null;
+  girlsSizes: SizeBreakdown | null;
+
+  // Simplified 6-size breakdown for chat/display compatibility
   quantities: Quantities;
-  imageUrl: string;
+
+  // Inventory item details
+  inventoryItemSku: string | null;
+  imageUrl: string | null;
+  productNotes: string | null;
+
+  // Relations
+  collectionId: string | null;
+  collectionName: string | null;
+  manufacturerId: string | null;
+  manufacturerName: string | null;
+  manufacturerCountry: string | null;
+  shipMethod: string | null;
+
+  // Derived display fields
   milestones: Milestone[];
-  timeline: TimelineEntry[];
   alerts: string[];
 }
 
 export interface Collection {
   id: string;
   name: string;
-  shortName: string;
-  color: string;
-  slots: number;
+  launchDate: string | null;
+  notes: string | null;
+  imageUrl: string | null;
 }
 
 export interface Manufacturer {
   id: string;
   name: string;
   country: string;
-  seaWeeks: number;
-  airDays: number;
+  termsDays: number | null;
+  proformaPercent: number | null;
+  downpaymentPercent: number | null;
+  manufacturingStart: number | null;
+  fabricOrderTime: number | null;
+  notes: string | null;
 }
 
-export interface ShipmentUpdate {
-  date: string;
-  time: string;
-  type: "tracking" | "email";
-  content: string;
-  from?: string;
-}
-
-export interface Shipment {
+export interface Invoice {
   id: string;
-  dressIds: string[];
-  carrier: string;
-  trackingNo: string;
-  eta: string;
-  method: ShipmentMethod;
-  mfrId: string;
-  status: ShipmentStatus;
-  lastUpdate: string;
-  units: number;
-  updates: ShipmentUpdate[];
+  airtableId: string | null;
+  name: string | null;
+  invoiceDate: string | null;
+  paidForPickup: string | null;
+  shippingMethod: string | null;
+  shippingStatus: string | null;
+  invoiceNotes: string | null;
+  logisticsTrackingNo: string | null;
+  notifiedLogisticsDate: string | null;
+  actualDepartureDate: string | null;
+  expectedArrivalDate: string | null;
+  actualArrivalDate: string | null;
+  downpaymentDueDate: string | null;
+  tariffPaid: number | null;
+  manufacturerId: string | null;
+  manufacturerName: string | null;
+  logisticsTeamId: string | null;
+  logisticsTeamName: string | null;
 }
 
 export interface Message {
@@ -126,15 +164,6 @@ export interface NewPOForm {
   dueDate: string;
   imageUrl: string;
   quantities: Quantities;
-}
-
-export interface NewShipmentForm {
-  dressIds: string[];
-  carrier: string;
-  trackingNo: string;
-  eta: string;
-  method: ShipmentMethod;
-  mfrId: string;
 }
 
 export interface ComposeForm {

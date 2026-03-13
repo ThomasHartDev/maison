@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { Dress } from "@/types";
 import type { ChatMessage, ToolProposal } from "@/types/chat";
-import { SEED_DRESSES } from "@/data/seed";
+import { useDresses } from "@/hooks/use-dresses";
 import { applyMutation } from "@/lib/chat-tools";
 import { uid } from "@/lib/helpers";
 import { GOLD, MUTED } from "@/constants";
@@ -12,7 +11,7 @@ import { ChatPanel } from "./chat-panel";
 import { POPanel } from "./po-panel";
 
 export default function ChatPOC() {
-  const [dresses, setDresses] = useState<Dress[]>(SEED_DRESSES);
+  const { dresses, setDresses } = useDresses();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [proposals, setProposals] = useState<ToolProposal[]>([]);
   const [senderRole, setSenderRole] = useState<"company" | "manufacturer">("manufacturer");
