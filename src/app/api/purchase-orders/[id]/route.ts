@@ -4,6 +4,7 @@ import { purchaseOrders, inventoryItems, manufacturers, collections, collectionC
 import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { logAudit, stringifyValue } from "@/lib/audit";
+import { syncToAirtable } from "@/lib/airtable";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -95,10 +96,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const timestampFields = new Set(["shipByDateAgreed", "sendShootSamplesAgreed"]);
 
-    // Fetch current values before updating (for audit diff)
+    // Fetch current values before updating (for audit diff + airtable sync)
     const [current] = await db
       .select({
         id: purchaseOrders.id,
+        airtableId: purchaseOrders.airtableId,
         orderStatus: purchaseOrders.orderStatus,
         shipByDateAgreed: purchaseOrders.shipByDateAgreed,
         poNotes: purchaseOrders.poNotes,
@@ -157,6 +159,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           }).catch(err => console.error("Audit log failed:", err));
         }
       }
+    }
+
+    // Fire-and-forget Airtable sync
+    if (current.airtableId) {
+      syncToAirtable(current.airtableId, body).catch(err =>
+        console.error("Airtable sync failed:", err)
+      );
     }
 
     return NextResponse.json(updated);
