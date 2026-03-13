@@ -1,5 +1,5 @@
-import type { Dress, DressStatus, Quantities } from "@/types";
-import { sum } from "@/lib/helpers";
+import type { Dress, DressStatus, Quantities, Size } from "@/types";
+import { uid, sum } from "@/lib/helpers";
 
 export const CHAT_TOOLS = [
   {
@@ -79,7 +79,36 @@ export const CHAT_TOOLS = [
       required: ["po_number", "milestone_label", "done"],
     },
   },
+  {
+    name: "create_purchase_order",
+    description: "Create a new purchase order. Use when the conversation mentions placing a new order, creating a new PO, or ordering a new dress/style.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string", description: "Name of the dress/style" },
+        collection_id: { type: "string", enum: ["col-1", "col-2", "col-3", "col-4"], description: "Collection ID" },
+        manufacturer_id: { type: "string", enum: ["mfr-1", "mfr-2", "mfr-3"], description: "Manufacturer ID" },
+        due_date: { type: "string", description: "Due date in YYYY-MM-DD format" },
+        quantities: {
+          type: "object",
+          properties: {
+            XS: { type: "number" }, S: { type: "number" }, M: { type: "number" },
+            L: { type: "number" }, XL: { type: "number" }, XXL: { type: "number" },
+          },
+          required: ["XS", "S", "M", "L", "XL", "XXL"],
+          description: "Size breakdown",
+        },
+      },
+      required: ["name", "due_date", "quantities"],
+    },
+  },
 ];
+
+const VALID_TOOL_NAMES = new Set(CHAT_TOOLS.map(t => t.name));
+
+export function isValidTool(name: string): boolean {
+  return VALID_TOOL_NAMES.has(name);
+}
 
 export function describeProposal(
   toolName: string,
@@ -102,6 +131,10 @@ export function describeProposal(
       return `Add alert to ${name}: "${input.alert}"`;
     case "update_milestone":
       return `Mark "${input.milestone_label}" as ${input.done ? "done" : "not done"} on ${name}`;
+    case "create_purchase_order": {
+      const qty = input.quantities as Quantities;
+      return `Create new PO "${input.name}" (${sum(qty)} units, due ${input.due_date})`;
+    }
     default:
       return `${toolName} on ${name}`;
   }
@@ -112,6 +145,38 @@ export function applyMutation(
   input: Record<string, unknown>,
   dresses: Dress[],
 ): Dress[] {
+  if (toolName === "create_purchase_order") {
+    const poNum = `PO-${String(dresses.length + 1).padStart(3, "0")}`;
+    const qty = input.quantities as Quantities;
+    const today = new Date().toISOString().split("T")[0];
+    const newDress: Dress = {
+      id: uid(),
+      poNumber: poNum,
+      name: input.name as string,
+      collectionId: (input.collection_id as string) || "col-1",
+      manufacturerId: (input.manufacturer_id as string) || "mfr-1",
+      status: "draft",
+      dueDate: input.due_date as string,
+      orderDate: today,
+      quantities: qty,
+      imageUrl: "https://images.unsplash.com/photo-1558618047-f4042eb19143?w=400&q=75",
+      milestones: [
+        { label: "Fabric Sourced", done: false },
+        { label: "Cutting", done: false },
+        { label: "Sewing", done: false },
+        { label: "QC Passed", done: false },
+        { label: "Dispatched", done: false },
+      ],
+      timeline: [{
+        id: uid(), date: today, time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+        type: "system", source: "PO Created", content: `${poNum} created via chat`,
+        user: "System", category: "design" as const,
+      }],
+      alerts: [],
+    };
+    return [...dresses, newDress];
+  }
+
   return dresses.map(d => {
     if (d.poNumber !== input.po_number) return d;
 

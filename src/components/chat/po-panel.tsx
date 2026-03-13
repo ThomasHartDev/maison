@@ -6,9 +6,14 @@ import { GOLD } from "@/constants";
 interface POPanelProps {
   dresses: Dress[];
   changedPOs: Set<string>;
+  onSelectDress?: (dress: Dress) => void;
 }
 
 export const POPanel = ({ dresses, changedPOs }: POPanelProps) => (
+  <POPanelWithDetail dresses={dresses} changedPOs={changedPOs} />
+);
+
+export const POPanelWithDetail = ({ dresses, changedPOs, onSelectDress }: POPanelProps) => (
   <div style={{
     width: 320,
     borderRight: "1px solid var(--border)",
@@ -32,6 +37,7 @@ export const POPanel = ({ dresses, changedPOs }: POPanelProps) => (
       return (
         <div
           key={d.id}
+          onClick={() => onSelectDress?.(d)}
           style={{
             padding: "10px 12px",
             borderRadius: 10,
@@ -39,6 +45,7 @@ export const POPanel = ({ dresses, changedPOs }: POPanelProps) => (
             background: justChanged ? "rgba(158,124,60,0.08)" : "var(--surface)",
             border: `1px solid ${justChanged ? GOLD : "var(--border)"}`,
             transition: "all 0.5s ease",
+            cursor: onSelectDress ? "pointer" : "default",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>

@@ -1,5 +1,5 @@
-import ChatPOC from "@/components/chat/chat-poc";
+import { redirect } from "next/navigation";
 
 export default function ChatPage() {
-  return <ChatPOC />;
+  redirect("/");
 }

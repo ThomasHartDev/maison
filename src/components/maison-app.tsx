@@ -14,6 +14,7 @@ import { HomeView } from "./home-view";
 import { DressesView } from "./dresses/dresses-view";
 import { InboxView } from "./inbox/inbox-view";
 import { ShipmentsView } from "./shipments/shipments-view";
+import { ChatView } from "./chat/chat-view";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -44,6 +45,7 @@ export default function App() {
           {tab === "dresses" && <DressesView dresses={dresses} setDresses={setDresses} user={user} initCol={colFilter} />}
           {tab === "inbox" && <InboxView messages={messages} setMessages={setMessages} dresses={dresses} setDresses={setDresses} user={user} />}
           {tab === "shipments" && <ShipmentsView shipments={shipments} setShipments={setShipments} dresses={dresses} setDresses={setDresses} />}
+          {tab === "chat" && <ChatView dresses={dresses} setDresses={setDresses} user={user} />}
         </div>
         <AppNav tabs={tabs} activeTab={tab} unread={unread} onTabChange={(t) => { setTab(t); if (t !== "dresses") setColFilter(null); }} />
       </div>

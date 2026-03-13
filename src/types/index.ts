@@ -14,7 +14,7 @@ export type ShipmentStatus = "Awaiting Pickup" | "In Transit" | "Customs" | "Del
 
 export type Role = "admin" | "logistics" | "marketing" | "design" | "warehouse";
 
-export type TabId = "home" | "dresses" | "inbox" | "shipments";
+export type TabId = "home" | "dresses" | "inbox" | "shipments" | "chat";
 
 export type Size = "XS" | "S" | "M" | "L" | "XL" | "XXL";
 

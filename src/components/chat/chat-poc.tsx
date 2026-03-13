@@ -61,18 +61,34 @@ export default function ChatPOC() {
         return;
       }
 
-      if (data.reply) {
+      const hasProposals = data.proposals && data.proposals.length > 0;
+
+      // Deduplicate proposals — same tool + same PO = keep only the first
+      const rawProposals: { toolName: string; toolInput: Record<string, unknown>; description: string }[] = data.proposals || [];
+      const seen = new Set<string>();
+      const dedupedProposals = rawProposals.filter(p => {
+        const key = `${p.toolName}:${p.toolInput.po_number}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Create a hidden anchor message for proposals — no visible text
+      const systemMsgId = uid();
+
+      if (dedupedProposals.length > 0) {
         setMessages(prev => [...prev, {
-          id: uid(),
+          id: systemMsgId,
           role: "system",
-          content: data.reply,
+          content: "",
           timestamp: new Date().toISOString(),
         }]);
       }
 
-      if (data.proposals && data.proposals.length > 0) {
-        const newProposals: ToolProposal[] = data.proposals.map((p: { toolName: string; toolInput: Record<string, unknown>; description: string }) => ({
+      if (hasProposals && dedupedProposals.length > 0) {
+        const newProposals: ToolProposal[] = dedupedProposals.map(p => ({
           id: uid(),
+          parentMessageId: systemMsgId,
           toolName: p.toolName,
           toolInput: p.toolInput,
           description: p.description,
@@ -80,16 +96,6 @@ export default function ChatPOC() {
         }));
 
         setProposals(prev => [...prev, ...newProposals]);
-
-        if (!data.reply) {
-          const proposalDesc = newProposals.map(p => p.description).join("; ");
-          setMessages(prev => [...prev, {
-            id: `msg-${newProposals[0].id}`,
-            role: "system",
-            content: `Proposed: ${proposalDesc}`,
-            timestamp: new Date().toISOString(),
-          }]);
-        }
       }
     } catch {
       setMessages(prev => [...prev, {
@@ -106,7 +112,6 @@ export default function ChatPOC() {
   const handleAccept = useCallback((proposalId: string) => {
     setProposals(prev => prev.map(p => {
       if (p.id !== proposalId) return p;
-      const updated = { ...p, status: "accepted" as const };
 
       setDresses(prevDresses => {
         const newDresses = applyMutation(p.toolName, p.toolInput, prevDresses);
@@ -116,14 +121,7 @@ export default function ChatPOC() {
         return newDresses;
       });
 
-      setMessages(prev => [...prev, {
-        id: uid(),
-        role: "system",
-        content: `Confirmed: ${p.description}`,
-        timestamp: new Date().toISOString(),
-      }]);
-
-      return updated;
+      return { ...p, status: "accepted" as const };
     }));
   }, [clearHighlight]);
 
@@ -131,16 +129,7 @@ export default function ChatPOC() {
     setProposals(prev => prev.map(p =>
       p.id === proposalId ? { ...p, status: "rejected" as const } : p,
     ));
-    const proposal = proposals.find(p => p.id === proposalId);
-    if (proposal) {
-      setMessages(prev => [...prev, {
-        id: uid(),
-        role: "system",
-        content: `Dismissed: ${proposal.description}`,
-        timestamp: new Date().toISOString(),
-      }]);
-    }
-  }, [proposals]);
+  }, []);
 
   return (
     <>

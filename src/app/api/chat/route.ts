@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Dress } from "@/types";
 import type { ChatMessage } from "@/types/chat";
-import { CHAT_TOOLS, describeProposal } from "@/lib/chat-tools";
+import { CHAT_TOOLS, describeProposal, isValidTool } from "@/lib/chat-tools";
 import { buildSystemPrompt } from "@/lib/chat-prompt";
 
 const client = new Anthropic();
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     for (const block of response.content) {
       if (block.type === "text") {
         reply = block.text;
-      } else if (block.type === "tool_use") {
+      } else if (block.type === "tool_use" && isValidTool(block.name)) {
         const input = block.input as Record<string, unknown>;
         proposals.push({
           toolName: block.name,
