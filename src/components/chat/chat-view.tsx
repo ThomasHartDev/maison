@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, type Dispatch, type SetStateAction } from "react";
-import type { Dress, User } from "@/types";
+import type { Dress, Collection, Manufacturer, User } from "@/types";
 import type { ChatMessage, ToolProposal } from "@/types/chat";
 import { applyMutation } from "@/lib/chat-tools";
 import { uid } from "@/lib/helpers";
@@ -13,10 +13,12 @@ import { DressDetail } from "@/components/dresses/dress-detail";
 interface ChatViewProps {
   dresses: Dress[];
   setDresses: Dispatch<SetStateAction<Dress[]>>;
+  collections: Collection[];
+  manufacturers: Manufacturer[];
   user: User;
 }
 
-export const ChatView = ({ dresses, setDresses, user }: ChatViewProps) => {
+export const ChatView = ({ dresses, setDresses, collections, manufacturers, user }: ChatViewProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [proposals, setProposals] = useState<ToolProposal[]>([]);
   const [senderRole, setSenderRole] = useState<"company" | "manufacturer">("manufacturer");
@@ -138,54 +140,65 @@ export const ChatView = ({ dresses, setDresses, user }: ChatViewProps) => {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px 16px 0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <button
-            onClick={() => setSenderRole("company")}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: senderRole === "company" ? 700 : 400,
-              background: senderRole === "company" ? GOLD : "transparent",
-              color: senderRole === "company" ? "#fff" : MUTED,
-              border: `1px solid ${senderRole === "company" ? GOLD : "var(--border)"}`,
-            }}
-          >
-            Company
-          </button>
-          <button
-            onClick={() => setSenderRole("manufacturer")}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: senderRole === "manufacturer" ? 700 : 400,
-              background: senderRole === "manufacturer" ? GOLD : "transparent",
-              color: senderRole === "manufacturer" ? "#fff" : MUTED,
-              border: `1px solid ${senderRole === "manufacturer" ? GOLD : "var(--border)"}`,
-            }}
-          >
-            Manufacturer
-          </button>
-        </div>
-      </div>
-
-      <div style={{ flex: 1, display: "flex", overflow: "hidden", marginTop: 8 }}>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", paddingBottom: 60 }}>
         <POPanelWithDetail
           dresses={dresses}
           changedPOs={changedPOs}
+          collections={collections}
+          manufacturers={manufacturers}
           onSelectDress={setSelectedDress}
         />
-        <ChatPanel
-          messages={messages}
-          proposals={proposals}
-          senderRole={senderRole}
-          loading={loading}
-          onSend={sendMessage}
-          onAccept={handleAccept}
-          onReject={handleReject}
-        />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          {/* Role toggle bar */}
+          <div style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            padding: "8px 16px",
+            borderBottom: "1px solid var(--border)",
+            flexShrink: 0,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button
+                onClick={() => setSenderRole("company")}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: senderRole === "company" ? 700 : 400,
+                  background: senderRole === "company" ? GOLD : "transparent",
+                  color: senderRole === "company" ? "#fff" : MUTED,
+                  border: `1px solid ${senderRole === "company" ? GOLD : "var(--border)"}`,
+                }}
+              >
+                Company
+              </button>
+              <button
+                onClick={() => setSenderRole("manufacturer")}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: senderRole === "manufacturer" ? 700 : 400,
+                  background: senderRole === "manufacturer" ? GOLD : "transparent",
+                  color: senderRole === "manufacturer" ? "#fff" : MUTED,
+                  border: `1px solid ${senderRole === "manufacturer" ? GOLD : "var(--border)"}`,
+                }}
+              >
+                Manufacturer
+              </button>
+            </div>
+          </div>
+
+          <ChatPanel
+            messages={messages}
+            proposals={proposals}
+            senderRole={senderRole}
+            loading={loading}
+            onSend={sendMessage}
+            onAccept={handleAccept}
+            onReject={handleReject}
+          />
+        </div>
       </div>
 
       {selectedDress && (

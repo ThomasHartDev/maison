@@ -42,7 +42,12 @@ export default function App() {
     <><style>{CSS}</style>
       <div style={{ minHeight: "100dvh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
         <AppHeader user={user} onSignOut={() => setUser(null)} />
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 100px", WebkitOverflowScrolling: "touch" }}>
+        <div style={{
+          flex: 1,
+          ...(tab === "chat"
+            ? { overflow: "hidden", padding: 0, display: "flex", flexDirection: "column" as const }
+            : { overflowY: "auto" as const, padding: "20px 16px 100px", WebkitOverflowScrolling: "touch" as const }),
+        }}>
           {loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 60, color: "var(--text3)", fontSize: 14 }}>Loading...</div>
           ) : (
@@ -51,7 +56,7 @@ export default function App() {
               {tab === "dresses" && <DressesView dresses={dresses} setDresses={setDresses} collections={collections} manufacturers={manufacturers} user={user} initCol={colFilter} />}
               {tab === "inbox" && <InboxView messages={messages} setMessages={setMessages} dresses={dresses} setDresses={setDresses} user={user} />}
               {tab === "shipments" && <ShipmentsView invoices={invoices} manufacturers={manufacturers} dresses={dresses} />}
-              {tab === "chat" && <ChatView dresses={dresses} setDresses={setDresses} user={user} />}
+              {tab === "chat" && <ChatView dresses={dresses} setDresses={setDresses} collections={collections} manufacturers={manufacturers} user={user} />}
             </>
           )}
         </div>
