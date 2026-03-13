@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { User, TabId, Dress, Message, Shipment } from "@/types";
+import type { User, TabId, Message, Shipment } from "@/types";
 import { CSS } from "@/styles/maison.css";
 import { TABS_BY_ROLE } from "@/constants";
-import { SEED_DRESSES, SEED_SHIPMENTS, SEED_MSGS } from "@/data/seed";
+import { SEED_SHIPMENTS, SEED_MSGS } from "@/data/seed";
+import { useDresses } from "@/hooks/use-dresses";
 import { useAutoLink } from "@/hooks/use-auto-link";
 import { useLiveMessages } from "@/hooks/use-live-messages";
 import { LoginScreen } from "./login-screen";
@@ -19,7 +20,7 @@ import { ChatView } from "./chat/chat-view";
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [tab, setTab] = useState<TabId>("home");
-  const [dresses, setDresses] = useState<Dress[]>(SEED_DRESSES);
+  const { dresses, setDresses, loading } = useDresses();
   const [messages, setMessages] = useState<Message[]>(SEED_MSGS);
   const [shipments, setShipments] = useState<Shipment[]>(SEED_SHIPMENTS);
   const [colFilter, setColFilter] = useState<string | null>(null);
