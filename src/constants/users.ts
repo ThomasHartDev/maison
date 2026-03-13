@@ -9,10 +9,10 @@ export const USERS: User[] = [
 ];
 
 export const TABS_BY_ROLE: Record<Role, TabId[]> = {
-  admin: ["home", "dresses", "inbox", "shipments"],
-  logistics: ["home", "dresses", "shipments"],
+  admin: ["home", "dresses", "inbox", "shipments", "chat"],
+  logistics: ["home", "dresses", "shipments", "chat"],
   marketing: ["home", "dresses"],
-  design: ["home", "dresses", "inbox"],
+  design: ["home", "dresses", "inbox", "chat"],
   warehouse: ["home", "dresses", "shipments"],
 };
 
@@ -21,4 +21,5 @@ export const TAB_ICONS: Record<TabId, string> = {
   dresses: "\u25C8",
   inbox: "\u2709",
   shipments: "\u25CE",
+  chat: "\u25AC",
 };

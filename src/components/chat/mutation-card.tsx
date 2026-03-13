@@ -14,6 +14,7 @@ const TOOL_LABELS: Record<string, string> = {
   update_due_date: "Date Change",
   add_alert: "New Alert",
   update_milestone: "Milestone Update",
+  create_purchase_order: "New Purchase Order",
 };
 
 export const MutationCard = ({ proposal, onAccept, onReject }: MutationCardProps) => {

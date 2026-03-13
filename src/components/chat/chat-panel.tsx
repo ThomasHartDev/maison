@@ -55,10 +55,27 @@ export const ChatPanel = ({ messages, proposals, senderRole, loading, onSend, on
         {messages.map(m => {
           const style = BUBBLE_COLORS[m.role];
           const isSystem = m.role === "system";
-
           const linkedProposals = isSystem
-            ? proposals.filter(p => m.content.includes(p.description) || m.id.includes("proposal"))
+            ? proposals.filter(p => p.parentMessageId === m.id)
             : [];
+
+          // Hidden anchor messages — only render their proposals
+          if (isSystem && !m.content) {
+            if (linkedProposals.length === 0) return null;
+            return (
+              <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                {linkedProposals.map(p => (
+                  <div key={p.id} style={{ maxWidth: "90%", width: "100%" }}>
+                    <MutationCard
+                      proposal={p}
+                      onAccept={() => onAccept(p.id)}
+                      onReject={() => onReject(p.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          }
 
           return (
             <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: style.align }}>
@@ -90,24 +107,6 @@ export const ChatPanel = ({ messages, proposals, senderRole, loading, onSend, on
           );
         })}
 
-        {/* Standalone proposals not linked to a system message */}
-        {proposals.filter(p => !messages.some(m => m.role === "system" && m.id === `msg-${p.id}`)).map(p => (
-          <div key={p.id} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ maxWidth: "90%", width: "100%" }}>
-              <MutationCard
-                proposal={p}
-                onAccept={() => onAccept(p.id)}
-                onReject={() => onReject(p.id)}
-              />
-            </div>
-          </div>
-        ))}
-
-        {loading && (
-          <div style={{ textAlign: "center", color: GOLD, fontSize: 12, padding: 8 }}>
-            Analyzing message...
-          </div>
-        )}
         <div ref={bottomRef} />
       </div>
 

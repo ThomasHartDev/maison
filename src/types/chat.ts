@@ -11,6 +11,7 @@ export interface ChatMessage {
 
 export interface ToolProposal {
   id: string;
+  parentMessageId: string;
   toolName: string;
   toolInput: Record<string, unknown>;
   description: string;
