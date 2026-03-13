@@ -193,6 +193,7 @@ export const ChatView = ({ dresses, setDresses, user }: ChatViewProps) => {
           dress={selectedDress}
           onClose={() => setSelectedDress(null)}
           onUpdate={handleDressUpdate}
+          allDresses={dresses}
           user={user}
         />
       )}

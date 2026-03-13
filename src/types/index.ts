@@ -76,6 +76,7 @@ export interface Dress {
   quantities: Quantities;
 
   // Inventory item details
+  inventoryItemId: string | null;
   inventoryItemSku: string | null;
   imageUrl: string | null;
   productNotes: string | null;
