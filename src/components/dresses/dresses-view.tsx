@@ -34,7 +34,7 @@ export const DressesView = ({ dresses, setDresses, collections, manufacturers, u
 
   return (
     <div className="fade-up">
-      {sel && <DressDetail dress={sel} onClose={() => setSel(null)} onUpdate={handleUpdate} collections={collections} manufacturers={manufacturers} user={user} />}
+      {sel && <DressDetail dress={sel} onClose={() => setSel(null)} onUpdate={handleUpdate} allDresses={dresses} collections={collections} manufacturers={manufacturers} user={user} />}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 600 }}>Purchase Orders</div>

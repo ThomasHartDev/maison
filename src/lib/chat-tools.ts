@@ -173,6 +173,7 @@ export function applyMutation(
       womensNumericSizes: null,
       girlsSizes: null,
       quantities: qty,
+      inventoryItemId: null,
       inventoryItemSku: null,
       imageUrl: null,
       productNotes: null,
