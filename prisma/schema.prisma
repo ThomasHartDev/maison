@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Collections ────────────────────────────────────────────────────────────────
+
+model Collection {
+  id         String    @id @default(cuid())
+  airtableId String?   @unique
+  name       String
+  launchDate DateTime?
+  notes      String?
+  imageUrl   String?
+
+  collectionCountries CollectionCountry[]
+  inventoryItems      InventoryItem[]
+  purchaseOrders      PurchaseOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("collections")
+}
+
+// ─── Manufacturers ──────────────────────────────────────────────────────────────
+
+model Manufacturer {
+  id                 String  @id @default(cuid())
+  airtableId         String? @unique
+  name               String
+  country            String // "China" | "India"
+  termsDays          Int?
+  proformaPercent    Float?
+  downpaymentPercent Float?
+  manufacturingStart Int? // days until manufacturing starts
+  fabricOrderTime    Int? // days for fabric ordering
+  notes              String?
+
+  collectionCountries CollectionCountry[]
+  inventoryItems      InventoryItem[]
+  purchaseOrders      PurchaseOrder[]
+  invoices            Invoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("manufacturers")
+}
+
+// ─── Countries ──────────────────────────────────────────────────────────────────
+
+model Country {
+  id              String  @id @default(cuid())
+  airtableId      String? @unique
+  name            String
+  fastBoatFastest Int?
+  fastBoatSlowest Int?
+  slowBoatFastest Int?
+  slowBoatSlowest Int?
+  airFastest      Int?
+  airSlowest      Int?
+  tariffPercent   Float?
+
+  logisticsTeams      LogisticsTeamCountry[]
+  collectionCountries CollectionCountry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("countries")
+}
+
+// ─── Collection x Countries (shipping plans) ───────────────────────────────────
+
+model CollectionCountry {
+  id         String  @id @default(cuid())
+  airtableId String? @unique
+  shipMethod String? // "Fast Boat" | "Slow Boat" | "Air"
+
+  collectionId   String
+  collection     Collection   @relation(fields: [collectionId], references: [id])
+  manufacturerId String
+  manufacturer   Manufacturer @relation(fields: [manufacturerId], references: [id])
+  countryId      String
+  country        Country      @relation(fields: [countryId], references: [id])
+
+  purchaseOrders PurchaseOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("collection_countries")
+}
+
+// ─── Logistics Teams ────────────────────────────────────────────────────────────
+
+model LogisticsTeam {
+  id         String  @id @default(cuid())
+  airtableId String? @unique
+  name       String
+
+  countries LogisticsTeamCountry[]
+  invoices  Invoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("logistics_teams")
+}
+
+model LogisticsTeamCountry {
+  logisticsTeamId String
+  logisticsTeam   LogisticsTeam @relation(fields: [logisticsTeamId], references: [id])
+  countryId       String
+  country         Country       @relation(fields: [countryId], references: [id])
+
+  @@id([logisticsTeamId, countryId])
+  @@map("logistics_team_countries")
+}
+
+// ─── SKU Master ─────────────────────────────────────────────────────────────────
+
+model SkuMaster {
+  id              String  @id @default(cuid())
+  airtableId      String? @unique
+  skuPrefix       String?
+  productName     String?
+  manufacturerSku String?
+  color           String?
+  cost            String?
+  collectionName  String?
+  factory         String?
+
+  inventoryItems InventoryItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sku_master")
+}
+
+// ─── Inventory Items ────────────────────────────────────────────────────────────
+
+model InventoryItem {
+  id                  String   @id @default(cuid())
+  airtableId          String?  @unique
+  productImageUrl     String?
+  styleProductionName String?
+  finalName           String?
+  productNotes        String?
+  manufacturerSku     String?
+  shopifyPrice        Float?
+  fullJessaKaeSku     String?
+  warehouseReceipts   String?
+  tags                String[] // multiselect tags
+
+  collectionId   String?
+  collection     Collection?   @relation(fields: [collectionId], references: [id])
+  manufacturerId String?
+  manufacturer   Manufacturer? @relation(fields: [manufacturerId], references: [id])
+  skuMasterId    String?
+  skuMaster      SkuMaster?    @relation(fields: [skuMasterId], references: [id])
+
+  purchaseOrders   PurchaseOrder[]
+  invoiceLineItems InvoiceLineItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("inventory_items")
+}
+
+// ─── Purchase Orders (Inventory Line Items) ─────────────────────────────────────
+
+model PurchaseOrder {
+  id                     String    @id @default(cuid())
+  airtableId             String?   @unique
+  sendPo                 String? // "PO Not Sent" | "Email PO" | "Sent"
+  lateProduct            String? // "Late, 10% Fee" | "Late, No Fee" | etc.
+  orderStatus            String? // "Open" | "Complete, Not Shipped" | etc.
+  shipByDateAgreed       DateTime?
+  poNotes                String?
+  orderDate              DateTime?
+  separatePricing        String? // "Yes" | "No"
+  singleProductCost      Float?
+  straightSizeCost       Float?
+  plusSizeCost           Float?
+  salePrice              Float?
+  shootSampleStatus      String? // "No Shoot Sample Needed" | etc.
+  sendShootSamplesAgreed DateTime?
+  tags                   String[]
+
+  // Size quantities stored as JSON objects
+  // Women's letter sizes: { xxs, xs, s, m, l, xl, xxl, "1x", "2x", "3x", "4x", "5x", "6x" }
+  womensSizes Json? @db.JsonB
+  // Women's numeric sizes: { "00", "0", "2", "4", "6", "8", "10", "12", "14", "16", "18", "20", "22", "24", "26", "28", "30", "32", "34" }
+  womensNumericSizes Json? @db.JsonB
+  // Girl's sizes: { "12m-18m", "2t", "3t", "4-5y", "6-7y", "8y", "9-10y", "11-12y", "13-14y" }
+  girlsSizes Json? @db.JsonB
+
+  inventoryItemId     String?
+  inventoryItem       InventoryItem?     @relation(fields: [inventoryItemId], references: [id])
+  manufacturerId      String?
+  manufacturer        Manufacturer?      @relation(fields: [manufacturerId], references: [id])
+  collectionCountryId String?
+  collectionCountry   CollectionCountry? @relation(fields: [collectionCountryId], references: [id])
+  collectionId        String?
+  collection          Collection?        @relation(fields: [collectionId], references: [id])
+
+  invoiceLineItems PurchaseOrderInvoiceLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("purchase_orders")
+}
+
+// ─── Invoices ───────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id                    String    @id @default(cuid())
+  airtableId            String?   @unique
+  name                  String?
+  invoiceDate           DateTime?
+  paidForPickup         String? // "Yes" | "No"
+  shippingMethod        String? // "Air" | "Fast Boat" | "Slow Boat"
+  shippingStatus        String? // "Ready, Waiting for shipping window" | "Shipped" | etc.
+  invoiceNotes          String?
+  logisticsTrackingNo   String?
+  notifiedLogisticsDate DateTime?
+  actualDepartureDate   DateTime?
+  expectedArrivalDate   DateTime?
+  actualArrivalDate     DateTime?
+  downpaymentDueDate    DateTime?
+  tariffPaid            Float?
+
+  manufacturerId  String?
+  manufacturer    Manufacturer?  @relation(fields: [manufacturerId], references: [id])
+  logisticsTeamId String?
+  logisticsTeam   LogisticsTeam? @relation(fields: [logisticsTeamId], references: [id])
+
+  lineItems         InvoiceLineItem[]
+  logisticsInvoices LogisticsInvoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("invoices")
+}
+
+// ─── Invoice Line Items ─────────────────────────────────────────────────────────
+
+model InvoiceLineItem {
+  id                 String  @id @default(cuid())
+  airtableId         String? @unique
+  unitPrice          Float?
+  actualQtyReceived  Int?
+  receivingTeamNotes String?
+
+  // Size quantities stored as JSON (same shape as PurchaseOrder)
+  womensSizes        Json? @db.JsonB
+  womensNumericSizes Json? @db.JsonB
+  girlsSizes         Json? @db.JsonB
+
+  invoiceId       String?
+  invoice         Invoice?       @relation(fields: [invoiceId], references: [id])
+  inventoryItemId String?
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+
+  purchaseOrders PurchaseOrderInvoiceLine[]
+  receiving      Receiving[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("invoice_line_items")
+}
+
+// ─── PurchaseOrder <-> InvoiceLineItem junction ─────────────────────────────────
+
+model PurchaseOrderInvoiceLine {
+  purchaseOrderId   String
+  purchaseOrder     PurchaseOrder   @relation(fields: [purchaseOrderId], references: [id])
+  invoiceLineItemId String
+  invoiceLineItem   InvoiceLineItem @relation(fields: [invoiceLineItemId], references: [id])
+
+  @@id([purchaseOrderId, invoiceLineItemId])
+  @@map("purchase_order_invoice_lines")
+}
+
+// ─── Logistics Invoices ─────────────────────────────────────────────────────────
+
+model LogisticsInvoice {
+  id                 String  @id @default(cuid())
+  airtableId         String? @unique
+  logisticsInvoiceNo String?
+  amountDue          Float?
+  chargeType         String? // "Import & Tariff Fees" | etc.
+
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("logistics_invoices")
+}
+
+// ─── Receiving ──────────────────────────────────────────────────────────────────
+
+model Receiving {
+  id                  String  @id @default(cuid())
+  airtableId          String? @unique
+  totalPackingListQty Int?
+  status              String? // "To Check" | "Discrepancy" | etc.
+
+  // Received quantities stored as JSON
+  womensSizesReceived   Json? @db.JsonB
+  womensNumericReceived Json? @db.JsonB
+  girlsSizesReceived    Json? @db.JsonB
+
+  invoiceLineItemId String?
+  invoiceLineItem   InvoiceLineItem? @relation(fields: [invoiceLineItemId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("receiving")
+}
