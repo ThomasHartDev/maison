@@ -76,7 +76,7 @@ export async function persistMutation(
   const res = await fetch(`/api/purchase-orders/${dress.id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
+    body: JSON.stringify({ ...patch, _source: "chat" }),
   });
 
   if (!res.ok) throw new Error(`Failed to update ${dress.poNumber}`);

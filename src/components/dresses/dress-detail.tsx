@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Dress, DressStatus, Collection, Manufacturer, User, SizeBreakdown } from "@/types";
-import { STATUSES, STATUS, GOLD, RED, AMBER, GREEN } from "@/constants";
+import { STATUSES, STATUS, GOLD, RED, AMBER, GREEN, MUTED } from "@/constants";
 import { daysUntil, fmtDate, sum } from "@/lib/helpers";
 import { Overlay } from "@/components/ui/overlay";
 import { Badge } from "@/components/ui/badge";
@@ -94,9 +94,95 @@ function RelatedOrderCard({ po, isActive, onClick }: { po: Dress; isActive: bool
   );
 }
 
+interface AuditEntry {
+  id: string;
+  userName: string;
+  action: string;
+  field: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  source: string;
+  createdAt: string;
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  orderStatus: "Status",
+  shipByDateAgreed: "Ship By Date",
+  poNotes: "PO Notes",
+  sendPo: "Send PO",
+  lateProduct: "Late Product",
+  singleProductCost: "Unit Cost",
+  straightSizeCost: "Straight Size Cost",
+  plusSizeCost: "Plus Size Cost",
+  salePrice: "Sale Price",
+  womensSizes: "Women's Sizes",
+  womensNumericSizes: "Women's Numeric Sizes",
+  girlsSizes: "Girls Sizes",
+  tags: "Tags",
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  chat: "AI Chat",
+  manual: "Manual",
+  system: "System",
+};
+
+function TimelineView({ poId }: { poId: string }) {
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/purchase-orders/${poId}/timeline`)
+      .then(r => r.json())
+      .then(data => setEntries(Array.isArray(data) ? data : []))
+      .catch(() => setEntries([]))
+      .finally(() => setLoading(false));
+  }, [poId]);
+
+  if (loading) return <div style={{ color: "var(--text3)", fontSize: 13, padding: 20, textAlign: "center" }}>Loading timeline...</div>;
+  if (entries.length === 0) return <div style={{ color: "var(--text3)", fontSize: 13, padding: 20, textAlign: "center" }}>No changes recorded yet.</div>;
+
+  return (
+    <div style={{ position: "relative", paddingLeft: 20 }}>
+      <div style={{ position: "absolute", left: 7, top: 4, bottom: 4, width: 2, background: "var(--border)" }} />
+      {entries.map(e => {
+        const dt = new Date(e.createdAt);
+        const dateStr = dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const timeStr = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+        const fieldLabel = e.field ? (FIELD_LABELS[e.field] || e.field) : null;
+
+        return (
+          <div key={e.id} style={{ position: "relative", marginBottom: 16, paddingLeft: 12 }}>
+            <div style={{
+              position: "absolute", left: -17, top: 4, width: 10, height: 10, borderRadius: "50%",
+              background: e.source === "chat" ? GOLD : "var(--text3)",
+              border: "2px solid var(--bg)",
+            }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 2 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{e.userName}</span>
+              <span style={{ fontSize: 10, color: "var(--text3)" }}>{dateStr} {timeStr}</span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 2 }}>
+              {fieldLabel ? `Updated ${fieldLabel}` : e.action}
+              <span style={{ fontSize: 10, color: MUTED, marginLeft: 6 }}>{SOURCE_LABELS[e.source] || e.source}</span>
+            </div>
+            {e.oldValue !== null && e.newValue !== null && (
+              <div style={{ fontSize: 11, color: "var(--text3)", background: "var(--surface2)", borderRadius: 6, padding: "4px 8px", marginTop: 4 }}>
+                <span style={{ textDecoration: "line-through", opacity: 0.6 }}>{e.oldValue || "(empty)"}</span>
+                {" → "}
+                <span style={{ fontWeight: 600, color: "var(--text)" }}>{e.newValue || "(empty)"}</span>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export const DressDetail = ({ dress, onClose, onUpdate, allDresses = [], collections = [], manufacturers = [], user }: DressDetailProps) => {
   const [sizeTab, setSizeTab] = useState<"letter" | "numeric" | "girls">("letter");
-  const [activeTab, setActiveTab] = useState<"details" | "orders">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "orders" | "timeline">("details");
   const mfr = manufacturers.find(m => m.id === dress.manufacturerId);
   const col = collections.find(c => c.id === dress.collectionId);
   const d = dress.dueDate ? daysUntil(dress.dueDate) : null;
@@ -138,32 +224,26 @@ export const DressDetail = ({ dress, onClose, onUpdate, allDresses = [], collect
         <button onClick={onClose} style={{ color: "var(--text3)", fontSize: 22, alignSelf: "flex-start", padding: 4 }}>{"\u00d7"}</button>
       </div>
 
-      {/* Tab bar — only show if there are related orders */}
+      {/* Tab bar */}
       <div style={{ display: "flex", gap: 4, marginBottom: 16, background: "var(--surface2)", borderRadius: 10, padding: 3 }}>
-        <button
-          onClick={() => setActiveTab("details")}
-          style={{
-            flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: activeTab === "details" ? 700 : 400,
-            background: activeTab === "details" ? "var(--surface)" : "transparent",
-            color: activeTab === "details" ? "var(--text)" : "var(--text3)",
-            border: "none", cursor: "pointer",
-            boxShadow: activeTab === "details" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-          }}
-        >
-          PO Details
-        </button>
-        <button
-          onClick={() => setActiveTab("orders")}
-          style={{
-            flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: activeTab === "orders" ? 700 : 400,
-            background: activeTab === "orders" ? "var(--surface)" : "transparent",
-            color: activeTab === "orders" ? "var(--text)" : "var(--text3)",
-            border: "none", cursor: "pointer",
-            boxShadow: activeTab === "orders" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-          }}
-        >
-          All Orders ({relatedOrders.length})
-        </button>
+        {(["details", "orders", "timeline"] as const).map(t => {
+          const labels = { details: "PO Details", orders: `All Orders (${relatedOrders.length})`, timeline: "Timeline" };
+          return (
+            <button
+              key={t}
+              onClick={() => setActiveTab(t)}
+              style={{
+                flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: activeTab === t ? 700 : 400,
+                background: activeTab === t ? "var(--surface)" : "transparent",
+                color: activeTab === t ? "var(--text)" : "var(--text3)",
+                border: "none", cursor: "pointer",
+                boxShadow: activeTab === t ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+              }}
+            >
+              {labels[t]}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === "details" && (
@@ -337,6 +417,7 @@ export const DressDetail = ({ dress, onClose, onUpdate, allDresses = [], collect
           )}
         </div>
       )}
+      {activeTab === "timeline" && <TimelineView poId={dress.id} />}
     </Overlay>
   );
 };
