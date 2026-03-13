@@ -1,0 +1,4 @@
+scripts/
+docs/
+*.md
+!README.md
