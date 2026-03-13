@@ -4,15 +4,14 @@ import { uid, sum } from "@/lib/helpers";
 export const CHAT_TOOLS = [
   {
     name: "update_status",
-    description: "Update the production status of a purchase order. Use when a message indicates a status change (e.g. production started, shipped, delayed).",
+    description: "Change PO production status.",
     input_schema: {
       type: "object" as const,
       properties: {
-        po_number: { type: "string", description: "The PO number (e.g. PO-001)" },
+        po_number: { type: "string" },
         new_status: {
           type: "string",
           enum: ["draft", "submitted", "production", "ontrack", "delayed", "shipped", "received", "cancelled"],
-          description: "The new status to set",
         },
       },
       required: ["po_number", "new_status"],
@@ -20,11 +19,11 @@ export const CHAT_TOOLS = [
   },
   {
     name: "update_quantities",
-    description: "Update the size-by-size quantity breakdown for a purchase order.",
+    description: "Update size-by-size quantities for a PO.",
     input_schema: {
       type: "object" as const,
       properties: {
-        po_number: { type: "string", description: "The PO number" },
+        po_number: { type: "string" },
         quantities: {
           type: "object",
           properties: {
@@ -32,7 +31,6 @@ export const CHAT_TOOLS = [
             L: { type: "number" }, XL: { type: "number" }, XXL: { type: "number" },
           },
           required: ["XS", "S", "M", "L", "XL", "XXL"],
-          description: "Full size breakdown",
         },
       },
       required: ["po_number", "quantities"],
@@ -40,55 +38,54 @@ export const CHAT_TOOLS = [
   },
   {
     name: "update_due_date",
-    description: "Change the due date of a purchase order. Use when a delay or schedule change is mentioned.",
+    description: "Change PO due date.",
     input_schema: {
       type: "object" as const,
       properties: {
-        po_number: { type: "string", description: "The PO number" },
-        new_date: { type: "string", description: "New due date in YYYY-MM-DD format" },
+        po_number: { type: "string" },
+        new_date: { type: "string", description: "YYYY-MM-DD" },
       },
       required: ["po_number", "new_date"],
     },
   },
   {
     name: "add_alert",
-    description: "Add an alert or note to a purchase order. Use for quality issues, delays, or important updates.",
+    description: "Add alert/note to a PO for quality issues or important updates.",
     input_schema: {
       type: "object" as const,
       properties: {
-        po_number: { type: "string", description: "The PO number" },
-        alert: { type: "string", description: "The alert message to add" },
+        po_number: { type: "string" },
+        alert: { type: "string" },
       },
       required: ["po_number", "alert"],
     },
   },
   {
     name: "update_milestone",
-    description: "Mark a production milestone as done or not done. Milestones are: Fabric Sourced, Cutting, Sewing, QC Passed, Dispatched.",
+    description: "Mark a production milestone done/not done.",
     input_schema: {
       type: "object" as const,
       properties: {
-        po_number: { type: "string", description: "The PO number" },
+        po_number: { type: "string" },
         milestone_label: {
           type: "string",
           enum: ["Fabric Sourced", "Cutting", "Sewing", "QC Passed", "Dispatched"],
-          description: "Which milestone to update",
         },
-        done: { type: "boolean", description: "Whether the milestone is complete" },
+        done: { type: "boolean" },
       },
       required: ["po_number", "milestone_label", "done"],
     },
   },
   {
     name: "create_purchase_order",
-    description: "Create a new purchase order. Use when the conversation mentions placing a new order, creating a new PO, or ordering a new dress/style.",
+    description: "Create a new PO when a new order is mentioned.",
     input_schema: {
       type: "object" as const,
       properties: {
-        name: { type: "string", description: "Name of the dress/style" },
-        collection_id: { type: "string", enum: ["col-1", "col-2", "col-3", "col-4"], description: "Collection ID" },
-        manufacturer_id: { type: "string", enum: ["mfr-1", "mfr-2", "mfr-3"], description: "Manufacturer ID" },
-        due_date: { type: "string", description: "Due date in YYYY-MM-DD format" },
+        name: { type: "string", description: "Dress/style name" },
+        collection_id: { type: "string" },
+        manufacturer_id: { type: "string" },
+        due_date: { type: "string", description: "YYYY-MM-DD" },
         quantities: {
           type: "object",
           properties: {
@@ -96,7 +93,6 @@ export const CHAT_TOOLS = [
             L: { type: "number" }, XL: { type: "number" }, XXL: { type: "number" },
           },
           required: ["XS", "S", "M", "L", "XL", "XXL"],
-          description: "Size breakdown",
         },
       },
       required: ["name", "due_date", "quantities"],

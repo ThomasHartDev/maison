@@ -7,6 +7,8 @@ import { buildSystemPrompt } from "@/lib/chat-prompt";
 
 const client = new Anthropic();
 
+const MAX_HISTORY = 20;
+
 interface ChatRequest {
   messages: ChatMessage[];
   dresses: Dress[];
@@ -23,17 +25,22 @@ export async function POST(req: Request) {
 
   const systemPrompt = buildSystemPrompt(dresses);
 
-  const anthropicMessages = messages.map(m => ({
+  // Filter out empty system messages and cap history to reduce tokens
+  const recent = messages
+    .filter(m => m.content.trim().length > 0)
+    .slice(-MAX_HISTORY);
+
+  const anthropicMessages = recent.map(m => ({
     role: (m.role === "system" ? "assistant" : "user") as "user" | "assistant",
     content: m.role === "system"
       ? m.content
-      : `[${m.role === "company" ? "Company" : "Manufacturer"}]: ${m.content}`,
+      : `[${m.role === "company" ? "Co" : "Mfr"}]: ${m.content}`,
   }));
 
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 1024,
+      max_tokens: 512,
       system: systemPrompt,
       messages: anthropicMessages,
       tools: CHAT_TOOLS,
