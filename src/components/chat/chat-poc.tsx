@@ -44,7 +44,10 @@ export default function ChatPOC() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [...messages, userMsg],
-          dresses,
+          dresses: dresses.map(d => ({
+            id: d.id, poNumber: d.poNumber, name: d.name, status: d.status,
+            dueDate: d.dueDate, quantities: d.quantities, milestones: d.milestones, alerts: d.alerts,
+          })),
         }),
       });
 
