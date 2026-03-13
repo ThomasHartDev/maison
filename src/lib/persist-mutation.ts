@@ -1,10 +1,10 @@
 import type { Dress, DressStatus } from "@/types";
 
-/** Reverse map: our DressStatus → the orderStatus string stored in Postgres */
+/** Reverse map: our DressStatus → the orderStatus string stored in Postgres/Airtable */
 const STATUS_TO_ORDER_STATUS: Record<DressStatus, string> = {
   draft: "Draft",
   submitted: "Submitted",
-  production: "Complete",
+  production: "Production Complete",
   ontrack: "Open",
   delayed: "Delayed",
   shipped: "Shipped",
