@@ -89,10 +89,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       "girlsSizes", "tags",
     ] as const;
 
+    const timestampFields = new Set(["shipByDateAgreed", "sendShootSamplesAgreed"]);
+
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     for (const field of allowedFields) {
       if (field in body) {
-        updates[field] = body[field];
+        updates[field] = timestampFields.has(field) && typeof body[field] === "string"
+          ? new Date(body[field])
+          : body[field];
       }
     }
 

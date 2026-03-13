@@ -4,6 +4,7 @@ import { useState, useCallback, type Dispatch, type SetStateAction } from "react
 import type { Dress, Collection, Manufacturer, User } from "@/types";
 import type { ChatMessage, ToolProposal } from "@/types/chat";
 import { applyMutation } from "@/lib/chat-tools";
+import { persistMutation } from "@/lib/persist-mutation";
 import { uid } from "@/lib/helpers";
 import { GOLD, MUTED } from "@/constants";
 import { ChatPanel } from "./chat-panel";
@@ -115,20 +116,27 @@ export const ChatView = ({ dresses, setDresses, collections, manufacturers, user
     }
   }, [senderRole, messages, dresses]);
 
-  const handleAccept = useCallback((proposalId: string) => {
+  const handleAccept = useCallback(async (proposalId: string) => {
     const proposal = proposals.find(p => p.id === proposalId);
     if (!proposal) return;
 
+    // Optimistic local update
     setProposals(prev => prev.map(p =>
       p.id === proposalId ? { ...p, status: "accepted" as const } : p,
     ));
-
     setDresses(prevDresses => applyMutation(proposal.toolName, proposal.toolInput, prevDresses));
 
     const po = String(proposal.toolInput.po_number);
     setChangedPOs(prev => new Set(prev).add(po));
     clearHighlight(po);
-  }, [proposals, setDresses, clearHighlight]);
+
+    // Persist to database
+    try {
+      await persistMutation(proposal.toolName, proposal.toolInput, dresses);
+    } catch (err) {
+      console.error("Failed to persist mutation:", err);
+    }
+  }, [proposals, setDresses, clearHighlight, dresses]);
 
   const handleReject = useCallback((proposalId: string) => {
     setProposals(prev => prev.map(p =>

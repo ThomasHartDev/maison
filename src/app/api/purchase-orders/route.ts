@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
 import { purchaseOrders, inventoryItems, manufacturers, collections } from "@/lib/schema";
 import { eq } from "drizzle-orm";
@@ -43,5 +44,36 @@ export async function GET() {
   } catch (error) {
     console.error("Failed to fetch purchase orders:", error);
     return NextResponse.json({ error: "Failed to fetch purchase orders" }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+
+    const id = randomUUID();
+    const now = new Date();
+
+    const [created] = await db
+      .insert(purchaseOrders)
+      .values({
+        id,
+        orderStatus: body.orderStatus || "Draft",
+        orderDate: now,
+        shipByDateAgreed: body.shipByDateAgreed ? new Date(body.shipByDateAgreed) : null,
+        womensSizes: body.womensSizes || null,
+        collectionId: body.collectionId || null,
+        manufacturerId: body.manufacturerId || null,
+        inventoryItemId: body.inventoryItemId || null,
+        poNotes: body.poNotes || null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning({ id: purchaseOrders.id });
+
+    return NextResponse.json(created, { status: 201 });
+  } catch (error) {
+    console.error("Failed to create purchase order:", error);
+    return NextResponse.json({ error: "Failed to create purchase order" }, { status: 500 });
   }
 }
